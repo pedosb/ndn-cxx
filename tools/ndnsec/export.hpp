@@ -36,12 +36,14 @@ ndnsec_export(int argc, char** argv)
   std::string output;
   std::string exportPassword;
   bool isPrivateExport = false;
+  bool askPassword = true;
 
   po::options_description description("General Usage\n  ndnsec export [-h] [-o output] [-p] identity \nGeneral options");
   description.add_options()
     ("help,h", "Produce help message")
     ("output,o", po::value<std::string>(&output), "(Optional) output file, stdout if not specified")
     ("private,p", "export info contains private key")
+    ("no-password,n", "export into unencrypted bag")
     ("identity,i", po::value<std::string>(&identityStr), "Identity to export")
     ;
 
@@ -74,6 +76,9 @@ ndnsec_export(int argc, char** argv)
   if (vm.count("private") != 0)
     isPrivateExport = true;
 
+  if (vm.count("no-password") != 0)
+    askPassword = false;
+
   if (vm.count("output") == 0)
     output = "-";
 
@@ -95,13 +100,15 @@ ndnsec_export(int argc, char** argv)
     try {
       KeyChain keyChain;
 
-      int count = 3;
-      while (!getPassword(exportPassword, "Passphrase for the private key: ")) {
-        count--;
-        if (count <= 0) {
-          std::cerr << "ERROR: invalid password" << std::endl;
-          memset(const_cast<char*>(exportPassword.c_str()), 0, exportPassword.size());
-          return 1;
+      if (askPassword) {
+        int count = 3;
+        while (!getPassword(exportPassword, "Passphrase for the private key: ")) {
+          count--;
+          if (count <= 0) {
+            std::cerr << "ERROR: invalid password" << std::endl;
+            memset(const_cast<char*>(exportPassword.c_str()), 0, exportPassword.size());
+            return 1;
+          }
         }
       }
       shared_ptr<SecuredBag> securedBag = keyChain.exportIdentity(identity, exportPassword);

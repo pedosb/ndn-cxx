@@ -35,11 +35,13 @@ ndnsec_import(int argc, char** argv)
   std::string input("-");
   std::string importPassword;
   bool isPrivateImport = false;
+  bool askPassword = true;
 
   po::options_description description("General Usage\n  ndnsec import [-h] [-p] input \nGeneral options");
   description.add_options()
     ("help,h", "produce help message")
     ("private,p", "import info contains private key")
+    ("no-password,n", "import from unecrypted bag")
     ("input,i", po::value<std::string>(&input), "input source, stdin if -")
     ;
 
@@ -68,6 +70,9 @@ ndnsec_import(int argc, char** argv)
 
   if (vm.count("private") != 0)
     isPrivateImport = true;
+  
+  if (vm.count("no-password") != 0)
+    askPassword = false;
 
   if (!isPrivateImport)
     {
@@ -87,17 +92,19 @@ ndnsec_import(int argc, char** argv)
           else
             securedBag = io::load<SecuredBag>(input);
 
-          int count = 3;
-          while (!getPassword(importPassword, "Passphrase for the private key: "))
-            {
-              count--;
-              if (count <= 0)
-                {
-                  std::cerr << "ERROR: Fail to get password" << std::endl;
-                  memset(const_cast<char*>(importPassword.c_str()), 0, importPassword.size());
-                  return 1;
-                }
-            }
+          if (askPassword) {
+            int count = 3;
+            while (!getPassword(importPassword, "Passphrase for the private key: "))
+              {
+                count--;
+                if (count <= 0)
+                  {
+                    std::cerr << "ERROR: Fail to get password" << std::endl;
+                    memset(const_cast<char*>(importPassword.c_str()), 0, importPassword.size());
+                    return 1;
+                  }
+              }
+          }
           keyChain.importIdentity(*securedBag, importPassword);
           memset(const_cast<char*>(importPassword.c_str()), 0, importPassword.size());
         }
